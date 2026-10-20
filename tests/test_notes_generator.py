@@ -3,6 +3,7 @@ from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 from notes_generator import _read_existing_notes, generate_notes
+from voice_alerts import OUTAGE_MARK
 
 
 # ---------------------------------------------------------------------------
@@ -155,3 +156,11 @@ class TestGenerateNotes:
         with patch("notes_generator.anthropic.Anthropic", return_value=mock_anthropic_client):
             result = generate_notes("text", "2024-03-25", None, "key")
         assert "zkrácen" not in result
+
+    def test_outage_instructions_only_when_transcript_has_outage(self, mock_anthropic_client):
+        with patch("notes_generator.anthropic.Anthropic", return_value=mock_anthropic_client):
+            generate_notes("bez problémů", "2026-10-20", None, "key")
+            generate_notes(f"[00:30–01:05] {OUTAGE_MARK} (x)", "2026-10-20", None, "key")
+        prompts = [c[1]["messages"][0]["content"] for c in mock_anthropic_client.messages.create.call_args_list]
+        assert "Výpadky záznamu" not in prompts[0]
+        assert "Výpadky záznamu" in prompts[1]

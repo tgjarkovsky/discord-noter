@@ -1,3 +1,16 @@
+## [2026-10-20] - Odstraněn Google Drive, projekty ze složky styles/
+
+- Pryč upload na Drive, `/project` příkazy a Google závislosti. Projekt = podsložka `styles/` se vzorovými zápisy (mimo git).
+
+## [2026-10-20] - Upozornění na problémy s voice do chatu
+
+- `voice_alerts.py`: výpadek voice spojení a opakované chyby dešifrování/dekódování audia bot napíše do kanálu, kde padlo `/note-start` (stejná zpráva max 1× za 60 s).
+- Výpadky audia (spadlé spojení, nedešifrovatelné/nedekódovatelné audio) se vyznačí v přepisu s časovým úsekem a Claude je uvede nahoře v zápisu.
+
+## [2026-10-20] - Oprava ztráty audia po reconnectu voice spojení
+
+- Po reconnectu voice websocketu (např. close 1006) py-cord nepředal nový `secret_key` AudioReaderu → zbytek nahrávky `CryptoError: Decryption failed`. Patch `VoiceWebSocket.load_secret_key` v `recorder.py` klíč předá.
+
 ## [2026-09-24] - Voice s DAVE E2EE, oprava přepisu na CPU, logování tokenů
 
 - py-cord z PR #3159 (DAVE receive), připnuto na commit — vydaný py-cord s DAVE nenahrává

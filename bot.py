@@ -11,8 +11,8 @@ from config import load_settings
 from recorder import TimedWaveSink
 from transcriber import load_model, transcribe_recording, format_transcript
 from notes_generator import generate_notes
-from drive_uploader import upload_file
-from projects import list_projects, add_project, remove_project, get_project
+from projects import list_projects, style_folder
+from voice_alerts import ChatAlertHandler, outages
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 log = logging.getLogger(__name__)
@@ -39,6 +39,23 @@ active_sessions: dict[int, VoiceClient | None] = {}
 # guild_id -> ID toho, kdo zavolal /note-stop (None = automatické zastavení)
 pending_stop: dict[int, int | None] = {}
 
+# guild_id -> (textový kanál pro upozornění, sink) běžícího nahrávání
+recordings: dict[int, tuple[discord.abc.Messageable, TimedWaveSink]] = {}
+
+
+# ponytail: log py-cordu neříká guild, problém se hlásí všem běžícím nahrávkám
+def _send_alert(text: str) -> None:
+    for channel, _ in list(recordings.values()):
+        asyncio.run_coroutine_threadsafe(channel.send(text), bot.loop)
+
+
+def _mark_issue(kind: str) -> None:
+    for _, sink in list(recordings.values()):
+        sink.mark(kind)
+
+
+logging.getLogger("discord").addHandler(ChatAlertHandler(_send_alert, _mark_issue))
+
 SKIP = "__skip__"
 
 
@@ -58,53 +75,6 @@ async def on_application_command_error(ctx: discord.ApplicationContext, error: d
         await ctx.respond("Příkaz selhal, detail je v logu bota.", ephemeral=True)
     except discord.DiscordException:
         pass
-
-
-# ── Project management ────────────────────────────────────────────────────────
-
-project_group = bot.create_group("project", "Správa projektů pro ukládání zápisů")
-
-
-async def _project_names(ctx: discord.AutocompleteContext) -> list[str]:
-    return [n for n in list_projects() if ctx.value.lower() in n.lower()][:25]
-
-
-@project_group.command(name="add", description="Přidej projekt s Google Drive složkou")
-async def project_add(
-    ctx: discord.ApplicationContext,
-    name: discord.Option(str, "Název projektu"),
-    drive_url: discord.Option(str, "URL Google Drive složky (nebo jen ID)"),
-    style_folder: discord.Option(str, "Lokální složka s dřívějšími zápisy (vzor stylu)", required=False, default=None),
-):
-    try:
-        folder_id = add_project(name, drive_url, style_folder)
-        await ctx.respond(f"Projekt **{name}** přidán (folder ID: `{folder_id}`).", ephemeral=True)
-    except ValueError as e:
-        await ctx.respond(str(e), ephemeral=True)
-
-
-@project_group.command(name="list", description="Vypíše uložené projekty")
-async def project_list(ctx: discord.ApplicationContext):
-    projects = list_projects()
-    if not projects:
-        await ctx.respond("Žádné projekty. Přidej je pomocí `/project add`.", ephemeral=True)
-        return
-    lines = [
-        f"• **{name}** — `{p['folder_id']}`" + (f" · vzory: `{p['style_folder']}`" if p["style_folder"] else "")
-        for name, p in projects.items()
-    ]
-    await ctx.respond("\n".join(lines), ephemeral=True)
-
-
-@project_group.command(name="remove", description="Odstraní projekt")
-async def project_remove(
-    ctx: discord.ApplicationContext,
-    name: discord.Option(str, "Název projektu", autocomplete=_project_names),
-):
-    if remove_project(name):
-        await ctx.respond(f"Projekt **{name}** odstraněn.", ephemeral=True)
-    else:
-        await ctx.respond(f"Projekt **{name}** nenalezen.", ephemeral=True)
 
 
 # ── Recording ─────────────────────────────────────────────────────────────────
@@ -138,9 +108,11 @@ async def join(ctx: discord.ApplicationContext):
         active_sessions.pop(ctx.guild_id, None)
         raise
 
-    voice_client.start_recording(TimedWaveSink(), _recording_finished_callback, ctx.channel)
+    sink = TimedWaveSink()
+    voice_client.start_recording(sink, _recording_finished_callback, ctx.channel)
 
     active_sessions[ctx.guild_id] = voice_client
+    recordings[ctx.guild_id] = (ctx.channel, sink)
     await ctx.respond(f"Připojeno do **{channel.name}** — nahrávám. Zastav pomocí `/note-stop`.")
 
 
@@ -183,7 +155,7 @@ class ProjectSelectView(discord.ui.View):
 
         # ponytail: Discord select má max 25 možností, projekty nad 24 se nezobrazí
         options = [discord.SelectOption(label=name, value=name) for name in projects[:24]]
-        options.append(discord.SelectOption(label="— Neuložit na Drive —", value=SKIP))
+        options.append(discord.SelectOption(label="— Bez vzoru —", value=SKIP))
 
         select = discord.ui.Select(placeholder="Vyber projekt…", options=options)
         select.callback = self._on_select
@@ -202,7 +174,7 @@ class ProjectSelectView(discord.ui.View):
 
 
 async def _ask_project(channel: discord.TextChannel, invoker_id: int | None) -> str | None:
-    projects = list(list_projects())
+    projects = list_projects()
     if not projects:
         return None
     view = ProjectSelectView(projects, invoker_id)
@@ -210,7 +182,7 @@ async def _ask_project(channel: discord.TextChannel, invoker_id: int | None) -> 
     await view.wait()
     await msg.delete()
     if view.chosen is None:
-        await channel.send("Projekt nevybrán včas — zápis uložím jen lokálně.")
+        await channel.send("Projekt nevybrán včas — zápis bude ve výchozím stylu.")
         return None
     return None if view.chosen == SKIP else view.chosen
 
@@ -228,6 +200,7 @@ async def _recording_finished_callback(sink: TimedWaveSink, channel: discord.Tex
     guild = channel.guild
     invoker_id = pending_stop.pop(guild.id, None)
     active_sessions.pop(guild.id, None)
+    recordings.pop(guild.id, None)
 
     try:
         await sink.vc.disconnect()
@@ -244,8 +217,7 @@ async def _recording_finished_callback(sink: TimedWaveSink, channel: discord.Tex
             await channel.send("Nepodařilo se přepsat žádné audio. Zápis nebyl vytvořen.")
             return
 
-        project = get_project(project_name) if project_name else None
-        transcript = format_transcript(segments)
+        transcript = format_transcript(segments, outages(sink.marks))
 
         await channel.send("Generuji zápis pomocí Claude...")
         meeting_date = datetime.now().strftime("%Y-%m-%d %H:%M")
@@ -254,7 +226,7 @@ async def _recording_finished_callback(sink: TimedWaveSink, channel: discord.Tex
             generate_notes,
             transcript,
             meeting_date,
-            project["style_folder"] if project else None,
+            style_folder(project_name) if project_name else None,
             settings.anthropic_api_key,
             settings.claude_model,
         )
@@ -265,19 +237,7 @@ async def _recording_finished_callback(sink: TimedWaveSink, channel: discord.Tex
         notes_path.write_text(notes_md, encoding="utf-8")
         transcript_path.write_text(transcript, encoding="utf-8")
 
-        drive_url = None
-        if project:
-            try:
-                drive_url = await loop.run_in_executor(
-                    None, upload_file, str(notes_path), project["folder_id"], settings.google_service_account_json
-                )
-            except Exception as e:
-                log.error(f"Drive upload selhal: {e}")
-                await channel.send("Upload na Drive selhal. Zápis je uložen lokálně.")
-
         header = f"**Zápis uložen:** `{notes_path}`"
-        if drive_url:
-            header += f"\n**Google Drive:** {drive_url}"
         await channel.send(header, files=[discord.File(notes_path), discord.File(transcript_path)])
 
     except Exception as e:

@@ -3,6 +3,7 @@ from types import SimpleNamespace
 from unittest.mock import MagicMock
 
 from transcriber import Segment, format_transcript, transcribe_recording
+from voice_alerts import OUTAGE_MARK, Outage
 
 
 # ---------------------------------------------------------------------------
@@ -124,3 +125,21 @@ class TestTranscribeRecording:
         transcribe_recording(sink, model)
         kwargs = model.transcribe.call_args.kwargs
         assert kwargs["language"] == "cs" and kwargs["vad_filter"] is True
+
+
+class TestFormatTranscriptOutages:
+    def test_outage_inserted_chronologically(self):
+        segments = [Segment(10.0, 12.0, "před", "Alice"), Segment(70.0, 72.0, "po", "Alice")]
+        result = format_transcript(segments, [Outage(30.0, 65.0, "audio nešlo dešifrovat")])
+        lines = [l for l in result.splitlines() if l.strip()]
+        assert lines[0].startswith("[00:10] **Alice**: před")
+        assert lines[1] == f"[00:30–01:05] {OUTAGE_MARK} (audio nešlo dešifrovat) — řeč v tomto úseku může chybět."
+        # po výpadku se jméno mluvčího zopakuje
+        assert lines[2].startswith("[01:10] **Alice**: po")
+
+    def test_outage_after_last_segment_and_open_end(self):
+        result = format_transcript([Segment(1.0, 2.0, "ahoj", "Bob")], [Outage(90.0, None, "spojení spadlo")])
+        assert result.splitlines()[-1].startswith(f"[01:30–konec] {OUTAGE_MARK}")
+
+    def test_outages_without_segments(self):
+        assert OUTAGE_MARK in format_transcript([], [Outage(0.0, 5.0, "spojení spadlo")])
