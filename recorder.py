@@ -2,6 +2,24 @@ import time
 
 import discord
 from discord.opus import Decoder
+from discord.voice.gateway import VoiceWebSocket
+
+_load_secret_key = VoiceWebSocket.load_secret_key
+
+
+async def _load_secret_key_into_reader(self, data):
+    """Po reconnectu voice websocketu pošle nový klíč i běžícímu AudioReaderu.
+
+    py-cord (2.8.2.dev91) klíč uloží jen na websocket, reader dál dešifruje starým
+    a od reconnectu se ztratí veškeré audio (CryptoError: Decryption failed).
+    """
+    await _load_secret_key(self, data)
+    reader = getattr(self.state.client, "_reader", None)
+    if reader:
+        reader.update_secret_key(bytes(data["secret_key"]))
+
+
+VoiceWebSocket.load_secret_key = _load_secret_key_into_reader
 
 BYTES_PER_SEC = Decoder.SAMPLING_RATE * Decoder.SAMPLE_SIZE
 MIN_GAP = BYTES_PER_SEC // 10  # 100 ms — menší mezery jsou jen jitter
@@ -28,6 +46,10 @@ class TimedWaveSink(discord.sinks.WaveSink):
         super().__init__()
         self._start = time.monotonic()
         self._written: dict = {}
+        self.marks: list[tuple[float, str]] = []  # (s od startu, druh problému) — viz voice_alerts
+
+    def mark(self, kind: str) -> None:
+        self.marks.append((time.monotonic() - self._start, kind))
 
     def write(self, data, user):
         pcm = data.pcm if hasattr(data, "pcm") else data

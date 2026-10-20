@@ -6,6 +6,8 @@ from dataclasses import dataclass
 import discord
 from faster_whisper import WhisperModel
 
+from voice_alerts import OUTAGE_MARK, Outage
+
 
 @dataclass
 class Segment:
@@ -67,22 +69,33 @@ def transcribe_recording(sink: discord.sinks.Sink, model: WhisperModel) -> list[
     return all_segments
 
 
-def format_transcript(segments: list[Segment]) -> str:
-    """Format segments into readable transcript."""
-    if not segments:
+def _mmss(seconds: float) -> str:
+    return f"{int(seconds // 60):02d}:{int(seconds % 60):02d}"
+
+
+def _outage_line(o: Outage) -> str:
+    end = _mmss(o.end) if o.end is not None else "konec"
+    return f"\n[{_mmss(o.start)}–{end}] {OUTAGE_MARK} ({o.reason}) — řeč v tomto úseku může chybět."
+
+
+def format_transcript(segments: list[Segment], outages: list[Outage] = ()) -> str:
+    """Format segments into readable transcript, with audio outages marked in place."""
+    if not segments and not outages:
         return "(žádný přepis)"
 
+    pending = sorted(outages, key=lambda o: o.start)
     lines = []
     prev_user = None
     for seg in segments:
-        minutes = int(seg.start // 60)
-        seconds = int(seg.start % 60)
-        timestamp = f"[{minutes:02d}:{seconds:02d}]"
+        while pending and pending[0].start <= seg.start:
+            lines.append(_outage_line(pending.pop(0)))
+            prev_user = None
 
         if seg.username != prev_user:
-            lines.append(f"\n{timestamp} **{seg.username}**: {seg.text}")
+            lines.append(f"\n[{_mmss(seg.start)}] **{seg.username}**: {seg.text}")
             prev_user = seg.username
         else:
             lines.append(f"  {seg.text}")
 
+    lines.extend(_outage_line(o) for o in pending)
     return "\n".join(lines).strip()

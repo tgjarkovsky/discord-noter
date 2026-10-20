@@ -1,6 +1,6 @@
 # Discord Voice Noter
 
-Bot nahrává hlasové hovory na Discordu, přepíše je pomocí Whisper a vygeneruje strukturovaný zápis z porady pomocí Claude. Zápis volitelně nahraje na Google Drive.
+Bot nahrává hlasové hovory na Discordu, přepíše je pomocí Whisper a vygeneruje strukturovaný zápis z porady pomocí Claude.
 
 ---
 
@@ -10,7 +10,6 @@ Bot nahrává hlasové hovory na Discordu, přepíše je pomocí Whisper a vygen
 - Whisper běží lokálně přes `faster-whisper` (CPU stačí, GPU s CUDA se použije automaticky)
 - Discord bot token
 - Anthropic API klíč
-- Google Cloud service account (volitelné — jen pro Drive upload)
 
 ---
 
@@ -41,7 +40,6 @@ ALLOWED_USER_IDS=123456789012345678
 WHISPER_MODEL=large-v3-turbo    # výchozí: large-v3-turbo
 CLAUDE_MODEL=claude-sonnet-4-6  # model pro generování zápisu
 NOTES_OUTPUT_DIR=./notes        # kam se ukládají zápisy lokálně
-GOOGLE_SERVICE_ACCOUNT_JSON=./service_account.json   # pro Drive upload
 ```
 
 ### Jak zjistit Discord User ID
@@ -85,18 +83,6 @@ Nebo přes tray ikonu (Windows): spusť `start_bot.vbs` nebo `tray.py` — bot s
 
 Nahrávání se zastaví i samo, když z voice kanálu odejdou všichni lidé.
 
-### Správa projektů (Drive složky)
-
-| Příkaz | Popis |
-|--------|-------|
-| `/project add <název> <url> [style_folder]` | Přidá projekt — propojí název s Google Drive složkou, volitelně se složkou vzorových zápisů |
-| `/project list` | Vypíše uložené projekty |
-| `/project remove <název>` | Odstraní projekt |
-
-`<url>` může být:
-- Plná URL: `https://drive.google.com/drive/folders/ABC123...`
-- Samotné folder ID: `ABC123defGHI456`
-
 ---
 
 ## Typický průběh
@@ -104,17 +90,22 @@ Nahrávání se zastaví i samo, když z voice kanálu odejdou všichni lidé.
 1. Přijdi do voice kanálu s ostatními
 2. Napiš `/note-start` v textovém kanálu — bot se připojí a začne nahrávat
 3. Po skončení porady napiš `/note-stop` (nebo prostě všichni odejděte)
-4. Pokud máš projekty, vyber ze seznamu, ke kterému zápis patří (nebo „Neuložit na Drive“) — přepis mezitím běží na pozadí. Vybírat může jen ten, kdo nahrávání zastavil; po 2 minutách se pokračuje bez projektu.
+4. Pokud existují projekty (viz níže), vyber ze seznamu, ke kterému zápis patří (nebo „Bez vzoru“) — přepis mezitím běží na pozadí. Vybírat může jen ten, kdo nahrávání zastavil; po 2 minutách se pokračuje ve výchozím stylu.
 5. Probíhá přepis (Whisper) a generování zápisu (Claude)
-6. Bot pošle do kanálu zápis a přepis jako přílohy `.md` (a odkaz na Drive, pokud byl vybrán projekt)
+6. Bot pošle do kanálu zápis a přepis jako přílohy `.md`
 
-### Vzorové zápisy (styl)
+### Projekty a vzorové zápisy (styl)
 
-Projekt může mít nastavenou `style_folder` — lokální adresář (na stroji, kde běží bot) s existujícími `.md` zápisy. Bot přečte posledních 5 souborů a použije je jako ukázku stylu pro Claude.
+Projekt = podsložka `styles/` s existujícími `.md` zápisy. Bot přečte posledních 5 souborů a použije je jako ukázku stylu pro Claude.
 
 ```
-/project add name:Tým drive_url:https://drive.google.com/drive/folders/ABC... style_folder:D:/zapisy/tym
+styles/
+  Tym/
+    2026-03-18.md
+    2026-03-25.md
 ```
+
+Složka `styles/` není v gitu (obsahuje skutečné zápisy z porad). Nový projekt nebo vzor = přidat soubory do `styles/` a restartovat bota.
 
 ---
 
@@ -128,21 +119,6 @@ notes/
   2026-03-25_14-30_Tym_prepis.md   # přepis s časy a mluvčími
   ...
 ```
-
-Projekty (Drive folder ID a složka se vzory) jsou uloženy v `projects.json` v adresáři bota.
-
----
-
-## Google Drive (volitelné)
-
-Pro upload zápisů na Drive potřebuješ **service account**:
-
-1. V [Google Cloud Console](https://console.cloud.google.com) vytvoř projekt
-2. Zapni **Google Drive API**
-3. Vytvoř Service Account → stáhni JSON klíč → ulož jako `service_account.json`
-4. Ve své Drive složce klikni **Sdílet** a přidej e-mail service accountu (formát `name@project.iam.gserviceaccount.com`) s oprávněním **Editor**
-
-Nahraný soubor není automaticky veřejný — sdílení spravuješ ručně v Drive.
 
 ---
 

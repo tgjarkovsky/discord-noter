@@ -3,6 +3,8 @@ from pathlib import Path
 
 import anthropic
 
+from voice_alerts import OUTAGE_MARK
+
 log = logging.getLogger(__name__)
 
 DEFAULT_MODEL = "claude-sonnet-4-6"
@@ -50,6 +52,12 @@ def generate_notes(
 ---
 """
 
+    outage_section = ""
+    if OUTAGE_MARK in transcript:
+        outage_section = f"""
+- Výpadky záznamu: přepis obsahuje řádky „{OUTAGE_MARK}“ s časovým úsekem. Hned pod nadpis zápisu
+  dej upozornění „⚠️ Záznam má výpadky: <úseky>“. Co v těchto úsecích chybí, si nedomýšlej."""
+
     prompt = f"""Jsi asistent pro tvorbu zápisů z porad. Vytvoř strukturovaný zápis z porady v češtině.
 {style_section}
 ## Přepis porady ({meeting_date}):
@@ -64,7 +72,7 @@ Vytvoř zápis z porady ve formátu Markdown. Zápis musí obsahovat:
 - Hlavní témata diskuse
 - Klíčová rozhodnutí
 - Úkoly (kdo, co, do kdy pokud bylo zmíněno)
-- Detailní shrnutí co kdo říkal — přiřaď výroky konkrétním osobám
+- Detailní shrnutí co kdo říkal — přiřaď výroky konkrétním osobám{outage_section}
 
 Buď věcný a přesný. Nedomýšlej věci, které nebyly řečeny."""
 

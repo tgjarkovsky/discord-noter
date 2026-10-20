@@ -13,6 +13,9 @@ service_account.json
 # Notes output
 notes/
 
+# Vzorové zápisy (skutečné porady, repo je veřejné)
+styles/
+
 # Audio files
 *.wav
 *.mp3

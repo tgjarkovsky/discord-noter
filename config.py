@@ -9,7 +9,6 @@ load_dotenv()
 class Settings:
     discord_token: str
     anthropic_api_key: str
-    google_service_account_json: str
     whisper_model: str
     whisper_device: str
     claude_model: str | None
@@ -30,7 +29,6 @@ def load_settings() -> Settings:
     return Settings(
         discord_token=_require("DISCORD_TOKEN"),
         anthropic_api_key=_require("ANTHROPIC_API_KEY"),
-        google_service_account_json=os.environ.get("GOOGLE_SERVICE_ACCOUNT_JSON", "./service_account.json"),
         whisper_model=os.environ.get("WHISPER_MODEL", "large-v3-turbo"),
         whisper_device=os.environ.get("WHISPER_DEVICE", "cpu"),
         claude_model=os.environ.get("CLAUDE_MODEL") or None,

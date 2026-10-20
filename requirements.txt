@@ -2,8 +2,6 @@
 py-cord[voice] @ git+https://github.com/Pycord-Development/pycord@10a5e8cf13bd8db21f95baf62cf866056d1e1091
 faster-whisper>=1.1.0
 anthropic>=0.40.0
-google-api-python-client>=2.0.0
-google-auth>=2.0.0
 python-dotenv
 PyNaCl
 pystray
