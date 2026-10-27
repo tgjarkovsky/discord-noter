@@ -1,6 +1,5 @@
 import asyncio
 import logging
-import re
 from datetime import datetime
 from pathlib import Path
 
@@ -12,6 +11,7 @@ from recorder import TimedWaveSink
 from transcriber import load_model, transcribe_recording, format_transcript
 from notes_generator import generate_notes
 from projects import list_projects, style_folder
+from output_files import output_base, write_notes, write_transcript
 from voice_alerts import ChatAlertHandler, outages
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
@@ -187,15 +187,6 @@ async def _ask_project(channel: discord.TextChannel, invoker_id: int | None) -> 
     return None if view.chosen == SKIP else view.chosen
 
 
-def _output_base(project_name: str | None) -> Path:
-    output_dir = Path(settings.notes_output_dir)
-    output_dir.mkdir(parents=True, exist_ok=True)
-    name = datetime.now().strftime("%Y-%m-%d_%H-%M")
-    if project_name:
-        name += "_" + re.sub(r"[^\w-]+", "_", project_name).strip("_")
-    return output_dir / name
-
-
 async def _recording_finished_callback(sink: TimedWaveSink, channel: discord.TextChannel, *args):
     guild = channel.guild
     invoker_id = pending_stop.pop(guild.id, None)
@@ -219,23 +210,30 @@ async def _recording_finished_callback(sink: TimedWaveSink, channel: discord.Tex
 
         transcript = format_transcript(segments, outages(sink.marks))
 
+        base = output_base(settings.notes_output_dir, project_name, datetime.now())
+        transcript_path = write_transcript(base, transcript)
+
         await channel.send("Generuji zápis pomocí Claude...")
         meeting_date = datetime.now().strftime("%Y-%m-%d %H:%M")
-        notes_md = await loop.run_in_executor(
-            None,
-            generate_notes,
-            transcript,
-            meeting_date,
-            style_folder(project_name) if project_name else None,
-            settings.anthropic_api_key,
-            settings.claude_model,
-        )
+        try:
+            notes_md = await loop.run_in_executor(
+                None,
+                generate_notes,
+                transcript,
+                meeting_date,
+                style_folder(project_name) if project_name else None,
+                settings.anthropic_api_key,
+                settings.claude_model,
+            )
+        except Exception as e:
+            log.error(f"Chyba generate_notes: {e}", exc_info=True)
+            await channel.send(
+                f"Zápis se nepodařilo vygenerovat ({type(e).__name__}). Přepis je uložen v `{transcript_path}`.",
+                file=discord.File(transcript_path),
+            )
+            return
 
-        base = _output_base(project_name)
-        notes_path = base.with_name(base.name + ".md")
-        transcript_path = base.with_name(base.name + "_prepis.md")
-        notes_path.write_text(notes_md, encoding="utf-8")
-        transcript_path.write_text(transcript, encoding="utf-8")
+        notes_path = write_notes(base, notes_md)
 
         header = f"**Zápis uložen:** `{notes_path}`"
         await channel.send(header, files=[discord.File(notes_path), discord.File(transcript_path)])
