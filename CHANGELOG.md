@@ -1,6 +1,6 @@
 ## [2026-10-27] - Přidán ROADMAP.md
 
-- Vize, uživatelé, směry na 1–3 měsíce (nasazení pro self-host týmy, spolehlivost nahrávání, výstupy) a co nedělat.
+- Vize, uživatelé, směry na 1–3 měsíce (nasazení pro self-host týmy, spolehlivost nahrávání, výstupy) a co nedělat (bez SaaS, bez plně cloudového řešení).
 
 ## [2026-10-20] - Odstraněn Google Drive, projekty ze složky styles/
 

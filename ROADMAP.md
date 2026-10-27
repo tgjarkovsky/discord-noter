@@ -42,4 +42,3 @@ Platforma pro self-host (Docker, nativní Linux, Windows) není rozhodnutá. Kro
 
 - **Hostovaná instance pro cizí servery.** Žádný SaaS ani multi-tenant provoz. Každý tým běží u sebe se svými klíči.
 - **Plně cloudové řešení.** Lokální přepis zůstává výchozí a audio ve výchozím nastavení neopouští stroj.
-- **Externí úložiště zápisů.** Upload na Google Drive byl odstraněn 2026-10-20. Zápisy zůstávají lokálně a v Discordu.
