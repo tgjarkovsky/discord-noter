@@ -13,11 +13,17 @@ from notes_generator import generate_notes
 from projects import list_projects, style_folder
 from output_files import output_base, write_notes, write_transcript
 from voice_alerts import ChatAlertHandler, outages
+from session_state import interrupted_message, mark_finished, mark_started, pop_interrupted
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 log = logging.getLogger(__name__)
 
 settings = load_settings()
+
+
+def _state_path() -> Path:
+    return Path(settings.notes_output_dir) / ".active_recordings.json"
+
 
 intents = discord.Intents.default()
 bot = discord.Bot(intents=intents)
@@ -27,6 +33,15 @@ bot = discord.Bot(intents=intents)
 async def on_ready():
     await bot.sync_commands()
     log.info(f"Bot přihlášen jako {bot.user}, příkazy synchronizovány.")
+    for record in pop_interrupted(_state_path()):
+        channel = bot.get_channel(record["channel_id"])
+        if channel is None:
+            log.warning(f"Přerušené nahrávání: kanál {record['channel_id']} už neexistuje.")
+            continue
+        try:
+            await channel.send(interrupted_message(record))
+        except discord.DiscordException as e:
+            log.warning(f"Přerušené nahrávání: oznámení do kanálu {record['channel_id']} selhalo: {e}")
 
 
 log.info(f"Načítám Whisper model '{settings.whisper_model}'...")
@@ -110,6 +125,7 @@ async def join(ctx: discord.ApplicationContext):
 
     sink = TimedWaveSink()
     voice_client.start_recording(sink, _recording_finished_callback, ctx.channel)
+    mark_started(_state_path(), ctx.guild_id, ctx.channel.id, datetime.now())
 
     active_sessions[ctx.guild_id] = voice_client
     recordings[ctx.guild_id] = (ctx.channel, sink)
@@ -189,6 +205,7 @@ async def _ask_project(channel: discord.TextChannel, invoker_id: int | None) -> 
 
 async def _recording_finished_callback(sink: TimedWaveSink, channel: discord.TextChannel, *args):
     guild = channel.guild
+    mark_finished(_state_path(), guild.id)
     invoker_id = pending_stop.pop(guild.id, None)
     active_sessions.pop(guild.id, None)
     recordings.pop(guild.id, None)
