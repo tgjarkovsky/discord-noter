@@ -106,6 +106,7 @@ Zapnutí: `sudo systemctl enable --now discord-noter`.
 |--------|-------|
 | `/note-start` | Bot se připojí do tvého aktuálního voice kanálu a začne nahrávat |
 | `/note-stop` | Zastaví nahrávání a spustí zpracování |
+| `/note-regenerate` | Vygeneruje nový zápis z uloženého přepisu (volitelně s jiným projektem), původní zápis přepíše |
 
 Nahrávání se zastaví i samo, když z voice kanálu odejdou všichni lidé.
 
