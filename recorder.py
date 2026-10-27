@@ -1,4 +1,5 @@
 import time
+from datetime import datetime
 
 import discord
 from discord.opus import Decoder
@@ -45,6 +46,7 @@ class TimedWaveSink(discord.sinks.WaveSink):
     def __init__(self):
         super().__init__()
         self._start = time.monotonic()
+        self.started_at = datetime.now()
         self._written: dict = {}
         self.marks: list[tuple[float, str]] = []  # (s od startu, druh problému) — viz voice_alerts
 

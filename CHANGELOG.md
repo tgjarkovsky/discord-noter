@@ -1,3 +1,7 @@
+## [2026-10-27] - Datum porady v zápisu je čas začátku nahrávání
+
+- `TimedWaveSink.started_at` uloží čas startu nahrávky; `bot.py` ho dává Claude jako datum porady místo času dokončení přepisu.
+
 ## [2026-10-27] - Přepis se ukládá před voláním Claude
 
 - `output_files.py`: zápis souborů výstupu. Přepis se uloží na disk hned po přepisu; když Claude API selže, bot to napíše do kanálu a přiloží přepis.

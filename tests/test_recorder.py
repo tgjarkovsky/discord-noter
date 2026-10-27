@@ -1,3 +1,4 @@
+from datetime import datetime
 from unittest.mock import patch
 
 from recorder import BYTES_PER_SEC, MIN_GAP, TimedWaveSink, padding_needed
@@ -25,6 +26,11 @@ class TestPaddingNeeded:
 
 
 class TestTimedWaveSink:
+    def test_started_at_is_creation_time(self):
+        sink = TimedWaveSink()
+        assert isinstance(sink.started_at, datetime)
+        assert abs((datetime.now() - sink.started_at).total_seconds()) < 5
+
     def test_tracks_are_aligned_to_wall_clock(self):
         clock = iter([0.0, 1.0, 1.02, 3.0])
         with patch("recorder.time.monotonic", side_effect=lambda: next(clock)):
