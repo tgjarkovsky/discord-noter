@@ -1,6 +1,9 @@
 ## [2026-10-27] - Datum porady v zápisu je čas začátku nahrávání
 
 - `TimedWaveSink.started_at` uloží čas startu nahrávky; `bot.py` ho dává Claude jako datum porady místo času dokončení přepisu.
+## [2026-10-27] - README: oprávnění bota a WHISPER_DEVICE
+
+- Doplněna oprávnění `View Channels` a `Attach Files`, opravena věta o GPU (výchozí je CPU), do `.env` přidán `WHISPER_DEVICE`.
 
 ## [2026-10-27] - Přepis se ukládá před voláním Claude
 

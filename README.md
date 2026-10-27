@@ -7,7 +7,7 @@ Bot nahrává hlasové hovory na Discordu, přepíše je pomocí Whisper a vygen
 ## Požadavky
 
 - Python 3.11+
-- Whisper běží lokálně přes `faster-whisper` (CPU stačí, GPU s CUDA se použije automaticky)
+- Whisper běží lokálně přes `faster-whisper` (výchozí je CPU, GPU zapneš přes `WHISPER_DEVICE=cuda`, pokud máš nainstalované CUDA knihovny)
 - Discord bot token
 - Anthropic API klíč
 
@@ -40,6 +40,7 @@ ALLOWED_USER_IDS=123456789012345678
 WHISPER_MODEL=large-v3-turbo    # výchozí: large-v3-turbo
 CLAUDE_MODEL=claude-sonnet-4-6  # model pro generování zápisu
 NOTES_OUTPUT_DIR=./notes        # kam se ukládají zápisy lokálně
+WHISPER_DEVICE=cpu              # výchozí: cpu; cuda jen s nainstalovanými CUDA knihovnami (cuBLAS/cuDNN)
 ```
 
 ### Jak zjistit Discord User ID
@@ -51,7 +52,7 @@ V Discordu: Nastavení → Pokročilé → zapnout **Vývojářský režim** →
 1. Jdi na [discord.com/developers](https://discord.com/developers/applications) → vyber svou aplikaci
 2. Vlevo **OAuth2 → URL Generator**
 3. Zaškrtni Scopes: `bot` + `applications.commands`
-4. Zaškrtni Bot Permissions: `Send Messages`, `Connect`, `Speak`, `Use Voice Activity`
+4. Zaškrtni Bot Permissions: `View Channels`, `Send Messages`, `Attach Files`, `Connect`, `Speak`, `Use Voice Activity`
 5. Zkopíruj vygenerovanou URL → otevři v prohlížeči → vyber server → Autorizovat
 
 ### Potřebné intenty
