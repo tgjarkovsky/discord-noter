@@ -1,3 +1,7 @@
+## [2026-10-27] - Přepis se ukládá před voláním Claude
+
+- `output_files.py`: zápis souborů výstupu. Přepis se uloží na disk hned po přepisu; když Claude API selže, bot to napíše do kanálu a přiloží přepis.
+
 ## [2026-10-27] - Přidán ROADMAP.md
 
 - Vize, uživatelé, směry na 1–3 měsíce (nasazení pro self-host týmy, spolehlivost nahrávání, výstupy) a co nedělat (bez SaaS, bez plně cloudového řešení).
