@@ -10,6 +10,9 @@
 ## [2026-10-27] - Příkaz /note-regenerate
 
 - Nový zápis z uloženého přepisu (`*_prepis.md`), volitelně se stylem jiného projektu. Původní zápis se přepíše. Logika v `regenerate.py`.
+## [2026-10-27] - Akční body v zápisu jako tabulka
+
+- `notes_generator.py`: sekce `## Akční body` je tabulka `Vlastník | Úkol | Termín` (neurčeno / neuvedeno, nic se nedomýšlí); má přednost před stylem vzorových zápisů.
 
 ## [2026-10-27] - Přepis se ukládá před voláním Claude
 
