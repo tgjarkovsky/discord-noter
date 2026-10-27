@@ -214,7 +214,7 @@ async def _recording_finished_callback(sink: TimedWaveSink, channel: discord.Tex
         transcript_path = write_transcript(base, transcript)
 
         await channel.send("Generuji zápis pomocí Claude...")
-        meeting_date = datetime.now().strftime("%Y-%m-%d %H:%M")
+        meeting_date = sink.started_at.strftime("%Y-%m-%d %H:%M")
         try:
             notes_md = await loop.run_in_executor(
                 None,
