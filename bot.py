@@ -12,6 +12,7 @@ from transcriber import load_model, transcribe_recording, format_transcript
 from notes_generator import generate_notes
 from projects import list_projects, style_folder
 from output_files import output_base, write_notes, write_transcript
+from regenerate import list_transcripts, meeting_date_from_name, notes_path_for, resolve_transcript
 from voice_alerts import ChatAlertHandler, outages
 from session_state import interrupted_message, mark_finished, mark_started, pop_interrupted
 
@@ -159,6 +160,55 @@ async def on_voice_state_update(member: discord.Member, before: discord.VoiceSta
         return
     log.info(f"Kanál {voice_client.channel} je prázdný, zastavuji nahrávání.")
     _stop_recording(member.guild.id, None)
+
+
+# ── Regenerate ────────────────────────────────────────────────────────────────
+
+async def _transcript_choices(ctx: discord.AutocompleteContext):
+    typed = ctx.value.lower()
+    names = [p.name for p in list_transcripts(settings.notes_output_dir)]
+    return [n for n in names if typed in n.lower()]
+
+
+async def _project_choices(ctx: discord.AutocompleteContext):
+    typed = ctx.value.lower()
+    return [p for p in list_projects() if typed in p.lower()][:25]
+
+
+@bot.slash_command(name="note-regenerate", description="Vygeneruje nový zápis z uloženého přepisu.")
+async def regenerate(
+    ctx: discord.ApplicationContext,
+    prepis: discord.Option(str, "Uložený přepis", autocomplete=_transcript_choices),
+    projekt: discord.Option(str, "Projekt (styl zápisu)", autocomplete=_project_choices, required=False),
+):
+    transcript_path = resolve_transcript(settings.notes_output_dir, prepis)
+    if transcript_path is None:
+        await ctx.respond("Přepis nenalezen.", ephemeral=True)
+        return
+    if projekt and projekt not in list_projects():
+        await ctx.respond("Neznámý projekt.", ephemeral=True)
+        return
+
+    await ctx.defer()
+    transcript = transcript_path.read_text(encoding="utf-8")
+    try:
+        notes_md = await asyncio.get_running_loop().run_in_executor(
+            None,
+            generate_notes,
+            transcript,
+            meeting_date_from_name(transcript_path),
+            style_folder(projekt) if projekt else None,
+            settings.anthropic_api_key,
+            settings.claude_model,
+        )
+    except Exception as e:
+        log.error(f"Chyba generate_notes: {e}", exc_info=True)
+        await ctx.respond(f"Zápis se nepodařilo vygenerovat ({type(e).__name__}).")
+        return
+
+    notes_path = notes_path_for(transcript_path)
+    notes_path.write_text(notes_md, encoding="utf-8")
+    await ctx.respond(f"**Zápis uložen:** `{notes_path}`", file=discord.File(notes_path))
 
 
 # ── Post-recording flow ───────────────────────────────────────────────────────

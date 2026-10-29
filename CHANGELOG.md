@@ -7,6 +7,9 @@
 ## [2026-10-27] - Po pádu během nahrávání bot po startu ohlásí ztracenou poradu
 
 - `session_state.py`: běžící nahrávání se zapisují do `<NOTES_OUTPUT_DIR>/.active_recordings.json`. Po startu bot do příslušných kanálů napíše, že nahrávání bylo přerušeno. README doplněno o autostart (systemd, Plánovač úloh).
+## [2026-10-27] - Příkaz /note-regenerate
+
+- Nový zápis z uloženého přepisu (`*_prepis.md`), volitelně se stylem jiného projektu. Původní zápis se přepíše. Logika v `regenerate.py`.
 
 ## [2026-10-27] - Přepis se ukládá před voláním Claude
 
