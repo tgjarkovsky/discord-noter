@@ -4,6 +4,7 @@ import os
 import subprocess
 import sys
 import threading
+import time
 from pathlib import Path
 
 from PIL import Image, ImageDraw
@@ -14,6 +15,12 @@ PYTHON = sys.executable
 
 _process: subprocess.Popen | None = None
 _icon: pystray.Icon | None = None
+_stopped_by_user = False
+_gave_up = False
+
+RESTART_DELAYS = (5.0, 30.0, 120.0)
+MAX_CRASHES = 5
+CRASH_WINDOW = 600.0
 
 
 # ── Ikony ─────────────────────────────────────────────────────────────────────
@@ -35,13 +42,29 @@ def _is_running() -> bool:
     return _process is not None and _process.poll() is None
 
 
+def restart_delay(crash_times: list[float], now: float) -> float | None:
+    """Pauza před dalším restartem podle pádů v posledních 10 minutách; None = vzdát to."""
+    recent = [t for t in crash_times if now - t < CRASH_WINDOW]
+    if len(recent) > MAX_CRASHES:
+        return None
+    return RESTART_DELAYS[min(len(recent), len(RESTART_DELAYS)) - 1]
+
+
 LOG_FILE = Path(__file__).parent / "bot.log"
 
 
-def _start(_icon, _item=None):
-    global _process
+def _log(message: str):
+    with open(LOG_FILE, "a", encoding="utf-8") as f:
+        f.write(f"[tray] {message}\n")
+
+
+def _start(_icon, _item=None, auto=False):
+    global _process, _stopped_by_user, _gave_up
     if _is_running():
         return
+    if not auto:
+        _stopped_by_user = False
+        _gave_up = False
     # Proces dědí handle, rodič si svou kopii může hned zavřít
     with open(LOG_FILE, "a", encoding="utf-8") as log_out:
         _process = subprocess.Popen(
@@ -54,7 +77,8 @@ def _start(_icon, _item=None):
 
 
 def _stop(_icon, _item=None):
-    global _process
+    global _process, _stopped_by_user
+    _stopped_by_user = True
     if _process and _is_running():
         _process.terminate()
         try:
@@ -102,20 +126,44 @@ def _menu() -> pystray.Menu:
 def _refresh():
     if _icon:
         _icon.icon = _make_icon(_is_running())
-        _icon.title = "discord-noter — běží" if _is_running() else "discord-noter — zastaven"
+        if _is_running():
+            _icon.title = "discord-noter — běží"
+        elif _gave_up:
+            _icon.title = "discord-noter — spadl, restart vypnut (viz bot.log)"
+        else:
+            _icon.title = "discord-noter — zastaven"
 
 
 # ── Watchdog — aktualizuje ikonu pokud bot spadne ─────────────────────────────
 
 def _watchdog():
-    import time
+    global _gave_up
     last = None
+    crash_times: list[float] = []
+    restart_at: float | None = None
     while True:
         now = _is_running()
         if now != last:
             _refresh()
             last = now
-        time.sleep(3)
+        t = time.monotonic()
+        if not now and not _stopped_by_user and not _gave_up:
+            if restart_at is None:
+                crash_times.append(t)
+                delay = restart_delay(crash_times, t)
+                if delay is None:
+                    _gave_up = True
+                    _log(f"Bot spadl víc než {MAX_CRASHES}× za {CRASH_WINDOW // 60:.0f} min, automatický restart vypnut.")
+                    _refresh()
+                else:
+                    _log(f"Bot spadl, restart za {delay:.0f} s.")
+                    restart_at = t + delay
+            elif t >= restart_at:
+                restart_at = None
+                _start(_icon, auto=True)
+        else:
+            restart_at = None
+        time.sleep(1)
 
 
 # ── Main ──────────────────────────────────────────────────────────────────────

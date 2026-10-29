@@ -73,26 +73,11 @@ Nebo přes tray ikonu (Windows): spusť `start_bot.vbs` nebo `tray.py` — bot s
 
 Když bot spadne během nahrávání, audio je ztracené. Po novém startu to ohlásí do kanálu, kde se nahrávání spustilo. Aby naskočil sám, spouštěj ho pod správcem procesů.
 
-**Linux (systemd)** – `/etc/systemd/system/discord-noter.service`:
+**Linux (systemd)**: zkopíruj `deploy/discord-noter.service` do `/etc/systemd/system/`, uprav cesty a zapni: `sudo systemctl enable --now discord-noter`. Unit má `Restart=on-failure` a `PYTHONUTF8=1`.
 
-```ini
-[Unit]
-Description=Discord Voice Noter
-After=network-online.target
+**Windows (tray)**: dej zástupce na `start_bot.vbs` do složky Po spuštění (`Win+R` → `shell:startup`). Tray bota po pádu sám spustí znovu (po 5 s, 30 s, 2 min). Po 5 restartech za 10 minut (šestý pád) to vzdá, ikona zešedne a důvod je v `bot.log`. Ruční zastavení přes menu restart nespustí.
 
-[Service]
-WorkingDirectory=/cesta/k/discord-noter
-ExecStart=/cesta/k/discord-noter/venv/bin/python bot.py
-Restart=on-failure
-RestartSec=10
-
-[Install]
-WantedBy=multi-user.target
-```
-
-Zapnutí: `sudo systemctl enable --now discord-noter`.
-
-**Windows (Plánovač úloh)**: vytvoř úlohu se spouštěčem „Při přihlášení“, akce `python bot.py` (nebo `wscript start_bot.vbs`) s pracovní složkou ve složce bota. Na záložce Nastavení zapni „Při selhání úlohy restartovat každých“ 1 minutu.
+**Windows (Plánovač úloh)**: úloha se spouštěčem „Při přihlášení“, akce `wscript start_bot.vbs` s pracovní složkou ve složce bota.
 
 > **Poznámka:** Při prvním spuštění se stahuje Whisper model (~1,6 GB pro `large-v3-turbo`). Bot se připojí k Discordu až po načtení modelu.
 

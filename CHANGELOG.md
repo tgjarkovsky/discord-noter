@@ -1,3 +1,5 @@
+## [2026-10-29] - Tray po pádu bota sám restartuje (5 s, 30 s, 2 min, po 5 pádech za 10 min přestane); deploy/discord-noter.service a README o autostartu
+
 ## [2026-10-27] - Datum porady v zápisu je čas začátku nahrávání
 
 - `TimedWaveSink.started_at` uloží čas startu nahrávky; `bot.py` ho dává Claude jako datum porady místo času dokončení přepisu.

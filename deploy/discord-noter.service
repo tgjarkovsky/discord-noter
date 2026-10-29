@@ -1,0 +1,14 @@
+[Unit]
+Description=Discord Voice Noter
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+WorkingDirectory=/cesta/k/discord-noter
+ExecStart=/cesta/k/discord-noter/venv/bin/python bot.py
+Environment=PYTHONUTF8=1
+Restart=on-failure
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target
