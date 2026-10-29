@@ -132,6 +132,8 @@ notes/
   ...
 ```
 
+Audio běžící porady se průběžně ukládá do `NOTES_OUTPUT_DIR/.spool/<guild_id>/`. Po pádu bota se po dalším startu zpracuje: bot do kanálu napíše, že poradu zpracovává, přepíše ji a vytvoří zápis ve výchozím stylu (bez výběru projektu). Po úspěšném uložení přepisu se spool smaže.
+
 ---
 
 ## Whisper modely
