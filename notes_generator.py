@@ -19,6 +19,17 @@ ACTION_ITEMS_INSTRUCTIONS = """Sekce `## Akční body` jako Markdown tabulka se 
   Tento formát akčních bodů má přednost před stylem vzorových zápisů."""
 
 
+def _read_style_file(f: Path) -> str | None:
+    raw = f.read_bytes()
+    for encoding in ("utf-8-sig", "cp1250"):
+        try:
+            return raw.decode(encoding)
+        except UnicodeDecodeError:
+            continue
+    log.warning("Vzor %s nejde přečíst jako UTF-8 ani cp1250, přeskakuji", f.name)
+    return None
+
+
 def _read_existing_notes(folder: str, max_files: int = 5) -> str:
     """Read the most recent .md files from folder as style examples."""
     path = Path(folder)
@@ -31,7 +42,9 @@ def _read_existing_notes(folder: str, max_files: int = 5) -> str:
 
     parts = []
     for f in md_files[:max_files]:
-        content = f.read_text(encoding="utf-8")
+        content = _read_style_file(f)
+        if content is None:
+            continue
         parts.append(f"--- {f.name} ---\n{content}")
 
     return "\n\n".join(parts)
