@@ -3,6 +3,10 @@
 ## [2026-10-29] - Záloha audia při selhání Whisperu
 
 - `output_files.write_audio` uloží stopy z paměti jako `<base>_audio_<jméno>.wav`; `bot.py` ji volá, když přepis selže, a do kanálu napíše cesty.
+## [2026-10-29] - Příkaz /note-status: délka nahrávání, zachycená řeč podle mluvčích a výpadky
+
+- `TimedWaveSink.speech` počítá přijaté bajty řeči na uživatele, `status_message` z toho skládá odpověď.
+
 ## [2026-10-27] - Datum porady v zápisu je čas začátku nahrávání
 
 - `TimedWaveSink.started_at` uloží čas startu nahrávky; `bot.py` ho dává Claude jako datum porady místo času dokončení přepisu.
