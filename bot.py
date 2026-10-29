@@ -11,7 +11,7 @@ from recorder import TimedWaveSink
 from transcriber import load_model, transcribe_recording, format_transcript
 from notes_generator import generate_notes
 from projects import list_projects, style_folder
-from output_files import output_base, write_notes, write_transcript
+from output_files import output_base, write_audio, write_notes, write_transcript
 from regenerate import list_transcripts, meeting_date_from_name, notes_path_for, resolve_transcript
 from voice_alerts import ChatAlertHandler, outages
 from session_state import interrupted_message, mark_finished, mark_started, pop_interrupted
@@ -269,7 +269,14 @@ async def _recording_finished_callback(sink: TimedWaveSink, channel: discord.Tex
         loop = asyncio.get_running_loop()
         transcription = loop.run_in_executor(None, transcribe_recording, sink, whisper_model)
         project_name = await _ask_project(channel, invoker_id)
-        segments = await transcription
+        try:
+            segments = await transcription
+        except Exception as e:
+            log.error(f"Chyba transcribe_recording: {e}", exc_info=True)
+            audio_paths = write_audio(output_base(settings.notes_output_dir, project_name, datetime.now()), sink)
+            where = ", ".join(f"`{p}`" for p in audio_paths) or "žádné použitelné audio nebylo k uložení"
+            await channel.send(f"Přepis selhal ({type(e).__name__}). Audio je uloženo: {where}")
+            return
 
         if not segments:
             await channel.send("Nepodařilo se přepsat žádné audio. Zápis nebyl vytvořen.")
