@@ -4,6 +4,9 @@
 ## [2026-10-27] - README: oprávnění bota a WHISPER_DEVICE
 
 - Doplněna oprávnění `View Channels` a `Attach Files`, opravena věta o GPU (výchozí je CPU), do `.env` přidán `WHISPER_DEVICE`.
+## [2026-10-27] - Po pádu během nahrávání bot po startu ohlásí ztracenou poradu
+
+- `session_state.py`: běžící nahrávání se zapisují do `<NOTES_OUTPUT_DIR>/.active_recordings.json`. Po startu bot do příslušných kanálů napíše, že nahrávání bylo přerušeno. README doplněno o autostart (systemd, Plánovač úloh).
 
 ## [2026-10-27] - Přepis se ukládá před voláním Claude
 
