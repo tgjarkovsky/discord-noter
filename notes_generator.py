@@ -10,6 +10,14 @@ log = logging.getLogger(__name__)
 DEFAULT_MODEL = "claude-sonnet-4-6"
 TRUNCATED_NOTE = "\n\n> ⚠️ Zápis byl zkrácen — dosažen limit délky odpovědi."
 
+ACTION_ITEMS_INSTRUCTIONS = """Sekce `## Akční body` jako Markdown tabulka se sloupci:
+  | Vlastník | Úkol | Termín |
+  | --- | --- | --- |
+  Vlastník je jméno mluvčího z přepisu; když úkol nikdo nepřevzal, napiš „neurčeno“.
+  Termín uveď jen ten, který zazněl; jinak napiš „neuvedeno“, termín si nedomýšlej.
+  Když nevznikly žádné akční body, napiš pod nadpis „Žádné akční body.“ (bez tabulky).
+  Tento formát akčních bodů má přednost před stylem vzorových zápisů."""
+
 
 def _read_existing_notes(folder: str, max_files: int = 5) -> str:
     """Read the most recent .md files from folder as style examples."""
@@ -71,7 +79,7 @@ Vytvoř zápis z porady ve formátu Markdown. Zápis musí obsahovat:
 - Seznam účastníků (přesně ti, kteří mluví v přepisu)
 - Hlavní témata diskuse
 - Klíčová rozhodnutí
-- Úkoly (kdo, co, do kdy pokud bylo zmíněno)
+- {ACTION_ITEMS_INSTRUCTIONS}
 - Detailní shrnutí co kdo říkal — přiřaď výroky konkrétním osobám{outage_section}
 
 Buď věcný a přesný. Nedomýšlej věci, které nebyly řečeny."""

@@ -157,6 +157,18 @@ class TestGenerateNotes:
             result = generate_notes("text", "2024-03-25", None, "key")
         assert "zkrácen" not in result
 
+    @pytest.mark.parametrize("with_samples", [False, True])
+    def test_akcni_body_instructions_in_prompt(self, mock_anthropic_client, tmp_path, with_samples):
+        if with_samples:
+            (tmp_path / "old.md").write_text("# Starý zápis\n- Úkoly: Petr zavolá", encoding="utf-8")
+        folder = str(tmp_path) if with_samples else None
+        with patch("notes_generator.anthropic.Anthropic", return_value=mock_anthropic_client):
+            generate_notes("text", "2024-03-25", folder, "key")
+        prompt = mock_anthropic_client.messages.create.call_args[1]["messages"][0]["content"]
+        assert ("Příklady existujících zápisů" in prompt) == with_samples
+        for expected in ("## Akční body", "Vlastník | Úkol | Termín", "neurčeno", "neuvedeno", "Žádné akční body."):
+            assert expected in prompt
+
     def test_outage_instructions_only_when_transcript_has_outage(self, mock_anthropic_client):
         with patch("notes_generator.anthropic.Anthropic", return_value=mock_anthropic_client):
             generate_notes("bez problémů", "2026-10-20", None, "key")
