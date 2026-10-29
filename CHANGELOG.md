@@ -3,6 +3,9 @@
 ## [2026-10-29] - Záloha audia při selhání Whisperu
 
 - `output_files.write_audio` uloží stopy z paměti jako `<base>_audio_<jméno>.wav`; `bot.py` ji volá, když přepis selže, a do kanálu napíše cesty.
+## [2026-10-29] - Kontrola reconnect patche po updatu py-cordu
+
+- `recorder.voice_patch_problems()` ověří, že patch `load_secret_key` a metody `update_secret_key` v py-cordu sedí. Bot nesoulady loguje po startu a přidává k odpovědi `/note-start`. README: sekce Update.
 ## [2026-10-27] - Datum porady v zápisu je čas začátku nahrávání
 
 - `TimedWaveSink.started_at` uloží čas startu nahrávky; `bot.py` ho dává Claude jako datum porady místo času dokončení přepisu.

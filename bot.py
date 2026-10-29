@@ -7,7 +7,7 @@ import discord
 from discord.voice import VoiceClient
 
 from config import load_settings
-from recorder import TimedWaveSink
+from recorder import TimedWaveSink, voice_patch_problems
 from transcriber import load_model, transcribe_recording, format_transcript
 from notes_generator import generate_notes
 from projects import list_projects, style_folder
@@ -44,6 +44,10 @@ async def on_ready():
         except discord.DiscordException as e:
             log.warning(f"Přerušené nahrávání: oznámení do kanálu {record['channel_id']} selhalo: {e}")
 
+
+patch_problems = voice_patch_problems()
+for _problem in patch_problems:
+    log.warning(_problem)
 
 log.info(f"Načítám Whisper model '{settings.whisper_model}'...")
 whisper_model = load_model(settings.whisper_model, settings.whisper_device)
@@ -130,7 +134,13 @@ async def join(ctx: discord.ApplicationContext):
 
     active_sessions[ctx.guild_id] = voice_client
     recordings[ctx.guild_id] = (ctx.channel, sink)
-    await ctx.respond(f"Připojeno do **{channel.name}** — nahrávám. Zastav pomocí `/note-stop`.")
+    reply = f"Připojeno do **{channel.name}** — nahrávám. Zastav pomocí `/note-stop`."
+    if patch_problems:
+        reply += "
+
+⚠️ " + "
+⚠️ ".join(patch_problems)
+    await ctx.respond(reply)
 
 
 def _stop_recording(guild_id: int, invoker_id: int | None) -> bool:
