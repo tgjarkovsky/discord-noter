@@ -91,6 +91,7 @@ Když bot spadne během nahrávání, audio je ztracené. Po novém startu to oh
 |--------|-------|
 | `/note-start` | Bot se připojí do tvého aktuálního voice kanálu a začne nahrávat |
 | `/note-stop` | Zastaví nahrávání a spustí zpracování |
+| `/note-status` | Během nahrávání ukáže délku, kolik řeči se zachytilo od koho a dosavadní výpadky audia |
 | `/note-regenerate` | Vygeneruje nový zápis z uloženého přepisu (volitelně s jiným projektem), původní zápis přepíše |
 
 Nahrávání se zastaví i samo, když z voice kanálu odejdou všichni lidé.

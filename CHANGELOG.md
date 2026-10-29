@@ -6,6 +6,10 @@
 ## [2026-10-29] - Vzorové zápisy v cp1250 už neshodí generování
 
 - `_read_existing_notes` čte vzory jako UTF-8 (i s BOM), jinak jako cp1250; nečitelný soubor přeskočí s varováním.
+## [2026-10-29] - Příkaz /note-status: délka nahrávání, zachycená řeč podle mluvčích a výpadky
+
+- `TimedWaveSink.speech` počítá přijaté bajty řeči na uživatele, `status_message` z toho skládá odpověď.
+
 ## [2026-10-27] - Datum porady v zápisu je čas začátku nahrávání
 
 - `TimedWaveSink.started_at` uloží čas startu nahrávky; `bot.py` ho dává Claude jako datum porady místo času dokončení přepisu.
