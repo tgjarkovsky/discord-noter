@@ -7,7 +7,7 @@ import discord
 from discord.voice import VoiceClient
 
 from config import load_settings
-from recorder import TimedWaveSink
+from recorder import TimedWaveSink, status_message
 from transcriber import load_model, transcribe_recording, format_transcript
 from notes_generator import generate_notes
 from projects import list_projects, style_folder
@@ -149,6 +149,15 @@ async def stop(ctx: discord.ApplicationContext):
         await ctx.respond("Žádné aktivní nahrávání.", ephemeral=True)
         return
     await ctx.respond("Zastavuji nahrávání, čekej...")
+
+
+@bot.slash_command(name="note-status", description="Ukáže, jak dlouho se nahrává a čí hlas bot zachytil.")
+async def status(ctx: discord.ApplicationContext):
+    recording = recordings.get(ctx.guild_id)
+    if recording is None:
+        await ctx.respond("Žádné aktivní nahrávání.", ephemeral=True)
+        return
+    await ctx.respond(status_message(recording[1]), ephemeral=True)
 
 
 @bot.event
