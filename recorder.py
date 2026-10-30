@@ -1,3 +1,4 @@
+import inspect
 import time
 from datetime import datetime
 
@@ -21,6 +22,30 @@ async def _load_secret_key_into_reader(self, data):
 
 
 VoiceWebSocket.load_secret_key = _load_secret_key_into_reader
+
+_FIX = "Vrať py-cord na commit z requirements.txt nebo uprav patch v recorder.py."
+
+
+def voice_patch_problems() -> list[str]:
+    """České popisy nesouladů mezi reconnect patchem a nainstalovaným py-cordem (prázdný seznam = vše sedí)."""
+    from discord.voice.receive.reader import AudioReader, PacketDecryptor
+
+    problems = []
+    if VoiceWebSocket.load_secret_key is not _load_secret_key_into_reader:
+        problems.append(
+            "Patch VoiceWebSocket.load_secret_key není aplikovaný – reconnect voice bude ztrácet audio. "
+            "Zkontroluj, že nikdo jiný metodu nepřepisuje po importu recorder.py."
+        )
+    elif not inspect.iscoroutinefunction(_load_secret_key):
+        problems.append(
+            "Původní VoiceWebSocket.load_secret_key už není korutina – náš patch ji volá přes await a spadne. " + _FIX
+        )
+    for cls in (AudioReader, PacketDecryptor):
+        if not callable(getattr(cls, "update_secret_key", None)):
+            problems.append(
+                f"py-cord po updatu nemá {cls.__name__}.update_secret_key – reconnect voice bude ztrácet audio. " + _FIX
+            )
+    return problems
 
 BYTES_PER_SEC = Decoder.SAMPLING_RATE * Decoder.SAMPLE_SIZE
 MIN_GAP = BYTES_PER_SEC // 10  # 100 ms — menší mezery jsou jen jitter
