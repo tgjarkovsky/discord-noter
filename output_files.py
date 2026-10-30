@@ -18,6 +18,26 @@ def write_transcript(base: Path, transcript: str) -> Path:
     return path
 
 
+def write_audio(base: Path, sink) -> list[Path]:
+    """Záloha audia do WAV, když přepis selže. Stopy kratší než 1024 B PCM se přeskočí."""
+    from transcriber import _write_wav
+
+    paths = []
+    for user, audio_data in sink.audio_data.items():
+        audio_data.file.seek(0)
+        raw = audio_data.file.read()
+        if raw.startswith(b"RIFF"):
+            raw = raw[44:]
+        if len(raw) < 1024:
+            continue
+        name = getattr(user, "display_name", None) or "Neznamy"
+        name = re.sub(r"[^\w-]+", "_", name).strip("_") or "Neznamy"
+        path = base.with_name(f"{base.name}_audio_{name}.wav")
+        _write_wav(raw, str(path))
+        paths.append(path)
+    return paths
+
+
 def write_notes(base: Path, notes: str) -> Path:
     path = base.with_name(base.name + ".md")
     path.write_text(notes, encoding="utf-8")
