@@ -3,6 +3,9 @@
 ## [2026-10-29] - Záloha audia při selhání Whisperu
 
 - `output_files.write_audio` uloží stopy z paměti jako `<base>_audio_<jméno>.wav`; `bot.py` ji volá, když přepis selže, a do kanálu napíše cesty.
+## [2026-10-29] - Audio porady se průběžně ukládá na disk a po pádu bota se zpracuje
+
+- Nový `audio_spool.py`: `TimedWaveSink` připisuje PCM do `<NOTES_OUTPUT_DIR>/.spool/<guild_id>/`. Po startu bot spool přepíše (`transcribe_tracks`), uloží přepis a zápis a spool smaže.
 ## [2026-10-27] - Datum porady v zápisu je čas začátku nahrávání
 
 - `TimedWaveSink.started_at` uloží čas startu nahrávky; `bot.py` ho dává Claude jako datum porady místo času dokončení přepisu.

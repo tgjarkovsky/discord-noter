@@ -8,7 +8,8 @@ from discord.voice import VoiceClient
 
 from config import load_settings
 from recorder import TimedWaveSink
-from transcriber import load_model, transcribe_recording, format_transcript
+from audio_spool import create_spool, list_spools, load_spool, remove_spool
+from transcriber import load_model, transcribe_recording, transcribe_tracks, format_transcript
 from notes_generator import generate_notes
 from projects import list_projects, style_folder
 from output_files import output_base, write_audio, write_notes, write_transcript
@@ -43,6 +44,8 @@ async def on_ready():
             await channel.send(interrupted_message(record))
         except discord.DiscordException as e:
             log.warning(f"Přerušené nahrávání: oznámení do kanálu {record['channel_id']} selhalo: {e}")
+    for spool_dir in list_spools(settings.notes_output_dir):
+        await _recover_spool(spool_dir)
 
 
 log.info(f"Načítám Whisper model '{settings.whisper_model}'...")
@@ -124,7 +127,8 @@ async def join(ctx: discord.ApplicationContext):
         active_sessions.pop(ctx.guild_id, None)
         raise
 
-    sink = TimedWaveSink()
+    spool_dir = create_spool(settings.notes_output_dir, ctx.guild_id, ctx.channel.id, datetime.now())
+    sink = TimedWaveSink(spool_dir)
     voice_client.start_recording(sink, _recording_finished_callback, ctx.channel)
     mark_started(_state_path(), ctx.guild_id, ctx.channel.id, datetime.now())
 
@@ -253,6 +257,60 @@ async def _ask_project(channel: discord.TextChannel, invoker_id: int | None) -> 
     return None if view.chosen == SKIP else view.chosen
 
 
+def _drop_spool(spool_dir: Path | None) -> None:
+    if spool_dir is not None:
+        remove_spool(spool_dir)
+
+
+async def _recover_spool(spool_dir: Path) -> None:
+    meta, tracks = load_spool(spool_dir)
+    channel = bot.get_channel(meta["channel_id"])
+    if channel is None:
+        log.warning(f"Spool {spool_dir}: kanál {meta['channel_id']} už neexistuje.")
+        return
+    started_at = datetime.fromisoformat(meta["started_at"])
+    try:
+        await channel.send(
+            f"Zpracovávám poradu přerušenou pádem bota (začala {started_at:%H:%M})…"
+        )
+        named = {meta["speakers"].get(key, key): pcm for key, pcm in tracks.items()}
+        loop = asyncio.get_running_loop()
+        segments = await loop.run_in_executor(None, transcribe_tracks, named, whisper_model)
+        if not segments:
+            await channel.send("Z přerušené porady se nepodařilo přepsat žádné audio.")
+            remove_spool(spool_dir)
+            return
+
+        base = output_base(settings.notes_output_dir, None, datetime.now())
+        transcript_path = write_transcript(base, format_transcript(segments))
+        remove_spool(spool_dir)
+
+        try:
+            notes_md = await loop.run_in_executor(
+                None,
+                generate_notes,
+                format_transcript(segments),
+                started_at.strftime("%Y-%m-%d %H:%M"),
+                None,
+                settings.anthropic_api_key,
+                settings.claude_model,
+            )
+        except Exception as e:
+            log.error(f"Chyba generate_notes: {e}", exc_info=True)
+            await channel.send(
+                f"Zápis se nepodařilo vygenerovat ({type(e).__name__}). Přepis je uložen v `{transcript_path}`.",
+                file=discord.File(transcript_path),
+            )
+            return
+        notes_path = write_notes(base, notes_md)
+        await channel.send(
+            f"**Zápis uložen:** `{notes_path}`",
+            files=[discord.File(notes_path), discord.File(transcript_path)],
+        )
+    except Exception as e:
+        log.error(f"Obnova spoolu {spool_dir} selhala: {e}", exc_info=True)
+
+
 async def _recording_finished_callback(sink: TimedWaveSink, channel: discord.TextChannel, *args):
     guild = channel.guild
     mark_finished(_state_path(), guild.id)
@@ -279,6 +337,7 @@ async def _recording_finished_callback(sink: TimedWaveSink, channel: discord.Tex
             return
 
         if not segments:
+            _drop_spool(sink.spool_dir)
             await channel.send("Nepodařilo se přepsat žádné audio. Zápis nebyl vytvořen.")
             return
 
@@ -286,6 +345,7 @@ async def _recording_finished_callback(sink: TimedWaveSink, channel: discord.Tex
 
         base = output_base(settings.notes_output_dir, project_name, datetime.now())
         transcript_path = write_transcript(base, transcript)
+        _drop_spool(sink.spool_dir)
 
         await channel.send("Generuji zápis pomocí Claude...")
         meeting_date = sink.started_at.strftime("%Y-%m-%d %H:%M")
