@@ -3,6 +3,9 @@
 ## [2026-10-29] - Záloha audia při selhání Whisperu
 
 - `output_files.write_audio` uloží stopy z paměti jako `<base>_audio_<jméno>.wav`; `bot.py` ji volá, když přepis selže, a do kanálu napíše cesty.
+## [2026-10-29] - Vzorové zápisy v cp1250 už neshodí generování
+
+- `_read_existing_notes` čte vzory jako UTF-8 (i s BOM), jinak jako cp1250; nečitelný soubor přeskočí s varováním.
 ## [2026-10-27] - Datum porady v zápisu je čas začátku nahrávání
 
 - `TimedWaveSink.started_at` uloží čas startu nahrávky; `bot.py` ho dává Claude jako datum porady místo času dokončení přepisu.
