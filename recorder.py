@@ -1,10 +1,12 @@
 import time
 from datetime import datetime
+from pathlib import Path
 
 import discord
 from discord.opus import Decoder
 from discord.voice.gateway import VoiceWebSocket
 
+from audio_spool import append_track
 from voice_alerts import outages
 
 _load_secret_key = VoiceWebSocket.load_secret_key
@@ -45,8 +47,9 @@ class TimedWaveSink(discord.sinks.WaveSink):
 
     # ponytail: čas příchodu paketů ≈ čas promluvy; jitter pod MIN_GAP se ignoruje
 
-    def __init__(self):
+    def __init__(self, spool_dir: Path | None = None):
         super().__init__()
+        self.spool_dir = spool_dir
         self._start = time.monotonic()
         self.started_at = datetime.now()
         self._written: dict = {}
@@ -63,6 +66,10 @@ class TimedWaveSink(discord.sinks.WaveSink):
         if pad:
             super().write(b"\x00" * pad, user)
         super().write(pcm, user)
+        if self.spool_dir is not None:
+            username = getattr(user, "display_name", None) or str(user)
+            user_key = str(getattr(user, "id", None) or user)
+            append_track(self.spool_dir, user_key, username, b"\x00" * pad + pcm)
         self._written[user] = written + pad + len(pcm)
         self.speech[user] = self.speech.get(user, 0) + len(pcm)
 
