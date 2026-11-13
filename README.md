@@ -83,6 +83,14 @@ Když bot spadne během nahrávání, audio je ztracené. Po novém startu to oh
 
 ---
 
+## Update
+
+py-cord se instaluje z konkrétního commitu a `recorder.py` na něj patchuje reconnect voice. Po updatu:
+
+1. `pip install -r requirements.txt`
+2. `pytest`
+3. Spusť bota a zkontroluj log po startu. Řádek `WARNING` o `update_secret_key` nebo `load_secret_key` znamená, že patch nesedí (stejné upozornění přijde i v odpovědi na `/note-start`).
+
 ## Příkazy
 
 ### Nahrávání
