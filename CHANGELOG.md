@@ -6,6 +6,9 @@
 ## [2026-10-29] - Vzorové zápisy v cp1250 už neshodí generování
 
 - `_read_existing_notes` čte vzory jako UTF-8 (i s BOM), jinak jako cp1250; nečitelný soubor přeskočí s varováním.
+## [2026-10-29] - Kontrola reconnect patche po updatu py-cordu
+
+- `recorder.voice_patch_problems()` ověří, že patch `load_secret_key` a metody `update_secret_key` v py-cordu sedí. Bot nesoulady loguje po startu a přidává k odpovědi `/note-start`. README: sekce Update.
 ## [2026-10-29] - Příkaz /note-status: délka nahrávání, zachycená řeč podle mluvčích a výpadky
 
 - `TimedWaveSink.speech` počítá přijaté bajty řeči na uživatele, `status_message` z toho skládá odpověď.
