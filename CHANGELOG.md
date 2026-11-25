@@ -9,6 +9,13 @@
 ## [2026-10-29] - Kontrola reconnect patche po updatu py-cordu
 
 - `recorder.voice_patch_problems()` ověří, že patch `load_secret_key` a metody `update_secret_key` v py-cordu sedí. Bot nesoulady loguje po startu a přidává k odpovědi `/note-start`. README: sekce Update.
+## [2026-10-29] - Příkaz /note-status: délka nahrávání, zachycená řeč podle mluvčích a výpadky
+
+- `TimedWaveSink.speech` počítá přijaté bajty řeči na uživatele, `status_message` z toho skládá odpověď.
+
+## [2026-10-29] - Audio porady se průběžně ukládá na disk a po pádu bota se zpracuje
+
+- Nový `audio_spool.py`: `TimedWaveSink` připisuje PCM do `<NOTES_OUTPUT_DIR>/.spool/<guild_id>/`. Po startu bot spool přepíše (`transcribe_tracks`), uloží přepis a zápis a spool smaže.
 ## [2026-10-27] - Datum porady v zápisu je čas začátku nahrávání
 
 - `TimedWaveSink.started_at` uloží čas startu nahrávky; `bot.py` ho dává Claude jako datum porady místo času dokončení přepisu.

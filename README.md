@@ -99,6 +99,7 @@ py-cord se instaluje z konkrétního commitu a `recorder.py` na něj patchuje re
 |--------|-------|
 | `/note-start` | Bot se připojí do tvého aktuálního voice kanálu a začne nahrávat |
 | `/note-stop` | Zastaví nahrávání a spustí zpracování |
+| `/note-status` | Během nahrávání ukáže délku, kolik řeči se zachytilo od koho a dosavadní výpadky audia |
 | `/note-regenerate` | Vygeneruje nový zápis z uloženého přepisu (volitelně s jiným projektem), původní zápis přepíše |
 
 Nahrávání se zastaví i samo, když z voice kanálu odejdou všichni lidé.
@@ -139,6 +140,8 @@ notes/
   2026-03-25_14-30_Tym_prepis.md   # přepis s časy a mluvčími
   ...
 ```
+
+Audio běžící porady se průběžně ukládá do `NOTES_OUTPUT_DIR/.spool/<guild_id>/`. Po pádu bota se po dalším startu zpracuje: bot do kanálu napíše, že poradu zpracovává, přepíše ji a vytvoří zápis ve výchozím stylu (bez výběru projektu). Po úspěšném uložení přepisu se spool smaže.
 
 ---
 

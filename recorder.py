@@ -1,10 +1,14 @@
 import inspect
 import time
 from datetime import datetime
+from pathlib import Path
 
 import discord
 from discord.opus import Decoder
 from discord.voice.gateway import VoiceWebSocket
+
+from audio_spool import append_track
+from voice_alerts import outages
 
 _load_secret_key = VoiceWebSocket.load_secret_key
 
@@ -68,11 +72,13 @@ class TimedWaveSink(discord.sinks.WaveSink):
 
     # ponytail: čas příchodu paketů ≈ čas promluvy; jitter pod MIN_GAP se ignoruje
 
-    def __init__(self):
+    def __init__(self, spool_dir: Path | None = None):
         super().__init__()
+        self.spool_dir = spool_dir
         self._start = time.monotonic()
         self.started_at = datetime.now()
         self._written: dict = {}
+        self.speech: dict = {}  # user -> bajty skutečně přijaté řeči (bez paddingu)
         self.marks: list[tuple[float, str]] = []  # (s od startu, druh problému) — viz voice_alerts
 
     def mark(self, kind: str) -> None:
@@ -85,4 +91,32 @@ class TimedWaveSink(discord.sinks.WaveSink):
         if pad:
             super().write(b"\x00" * pad, user)
         super().write(pcm, user)
+        if self.spool_dir is not None:
+            username = getattr(user, "display_name", None) or str(user)
+            user_key = str(getattr(user, "id", None) or user)
+            append_track(self.spool_dir, user_key, username, b"\x00" * pad + pcm)
         self._written[user] = written + pad + len(pcm)
+        self.speech[user] = self.speech.get(user, 0) + len(pcm)
+
+
+def _fmt_duration(seconds: float) -> str:
+    total = int(seconds)
+    minutes, secs = divmod(total, 60)
+    return f"{minutes} min {secs} s" if minutes else f"{secs} s"
+
+
+def status_message(sink: TimedWaveSink, now_monotonic: float | None = None) -> str:
+    """Text pro /note-status: délka nahrávání, zachycená řeč podle mluvačů a výpadky."""
+    now = time.monotonic() if now_monotonic is None else now_monotonic
+    lines = [f"🔴 Nahrávám už {_fmt_duration(now - sink._start)}."]
+    if sink.speech:
+        lines.append("**Zachycená řeč:**")
+        for user, size in sorted(sink.speech.items(), key=lambda kv: kv[1], reverse=True):
+            name = getattr(user, "display_name", None) or str(user)
+            lines.append(f"- {name}: {_fmt_duration(size / BYTES_PER_SEC)}")
+    else:
+        lines.append("⚠️ Zatím jsem nezachytil žádný hlas – zkontroluj oprávnění a že mluvíte ve správném kanálu.")
+    for o in outages(sink.marks):
+        end = _fmt_duration(o.end) if o.end is not None else "doteď"
+        lines.append(f"⚠️ Výpadek audia {_fmt_duration(o.start)} – {end} ({o.reason})")
+    return "\n".join(lines)

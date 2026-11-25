@@ -47,9 +47,21 @@ def _transcribe_user(model: WhisperModel, pcm: bytes, username: str) -> list[Seg
         os.unlink(tmp_path)
 
 
+def transcribe_tracks(tracks: dict[str, bytes], model: WhisperModel) -> list[Segment]:
+    """Transcribe raw PCM per speaker (klíč = jméno) and return merged chronological segments."""
+    all_segments: list[Segment] = []
+    for username, raw in tracks.items():
+        if len(raw) < 1024:
+            continue
+        all_segments.extend(_transcribe_user(model, raw, username))
+
+    all_segments.sort(key=lambda s: s.start)
+    return all_segments
+
+
 def transcribe_recording(sink: discord.sinks.Sink, model: WhisperModel) -> list[Segment]:
     """Transcribe each user's audio and return merged chronological segments."""
-    all_segments: list[Segment] = []
+    tracks: dict[str, bytes] = {}
 
     # Klíče audio_data jsou User/Member (None = neznámý zdroj)
     for user, audio_data in sink.audio_data.items():
@@ -60,13 +72,9 @@ def transcribe_recording(sink: discord.sinks.Sink, model: WhisperModel) -> list[
         # WaveSink.format_audio uloží audio jako WAV — odřízni hlavičku, _write_wav přidá vlastní
         if raw.startswith(b"RIFF"):
             raw = raw[44:]
-        if len(raw) < 1024:
-            continue
+        tracks[username] = raw
 
-        all_segments.extend(_transcribe_user(model, raw, username))
-
-    all_segments.sort(key=lambda s: s.start)
-    return all_segments
+    return transcribe_tracks(tracks, model)
 
 
 def _mmss(seconds: float) -> str:
